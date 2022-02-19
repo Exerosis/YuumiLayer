@@ -13,6 +13,7 @@ import com.github.kwhat.jnativehook.mouse.NativeMouseListener
 import com.github.kwhat.jnativehook.mouse.NativeMouseMotionListener
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
+import java.awt.MouseInfo
 import java.awt.Robot
 import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
@@ -63,24 +64,29 @@ fun main(args: Array<String>) {
                     write.byte(OP_MOUSE_MOVE)
                     write.int(event.x)
                     write.int(event.y)
-                    if (operation != OP_MOUSE_MOVE) {
-                        write.byte(operation)
-                        write.byte(button.toByte())
-                    }
+                    write.byte(operation)
+                    write.byte(button.toByte())
+                }
+            }
+            fun handle(event: NativeMouseEvent) {
+                 runBlocking {
+                    write.byte(OP_MOUSE_MOVE)
+                    write.int(event.x)
+                    write.int(event.y)
                 }
             }
             override fun nativeKeyPressed(event: NativeKeyEvent) = handle(OP_KEY_PRESS, event)
             override fun nativeKeyReleased(event: NativeKeyEvent) = handle(OP_KEY_RELEASE, event)
             override fun nativeMousePressed(event: NativeMouseEvent) = handle(OP_MOUSE_PRESS, event)
             override fun nativeMouseReleased(event: NativeMouseEvent) = handle(OP_MOUSE_RELEASE, event)
-            override fun nativeMouseMoved(event: NativeMouseEvent) = handle(OP_MOUSE_MOVE, event)
+            override fun nativeMouseMoved(event: NativeMouseEvent) = handle(event)
         }
         GlobalScreen.registerNativeHook()
         GlobalScreen.addNativeKeyListener(listener)
         GlobalScreen.addNativeMouseListener(listener)
         GlobalScreen.addNativeMouseMotionListener(listener)
     } else while (provider.isOpen) runBlocking { try {
-        val robot = Robot()
+        val robot = Robot(); val scale = 1 - (1 / args[3].toFloat())
         println("Waiting for connections...")
         provider.accept(address).apply {
             println("Got connection to Yuumi!")
@@ -88,7 +94,14 @@ fun main(args: Array<String>) {
                 when (read.byte()) {
                     OP_KEY_PRESS -> robot.keyPress(read.int())
                     OP_KEY_RELEASE -> robot.keyRelease(read.int())
-                    OP_MOUSE_MOVE -> robot.mouseMove(read.int(), read.int())
+                    OP_MOUSE_MOVE -> {
+                        val x = read.int(); val y = read.int()
+                        val origin = MouseInfo.getPointerInfo().location
+                        robot.mouseMove(
+                            (x - (x - origin.x) * scale).toInt(),
+                            (y - (y - origin.y) * scale).toInt()
+                        )
+                    }
                     OP_MOUSE_PRESS -> robot.mousePress(read.byte().toInt())
                     OP_MOUSE_RELEASE -> robot.mouseRelease(read.byte().toInt())
                 }
