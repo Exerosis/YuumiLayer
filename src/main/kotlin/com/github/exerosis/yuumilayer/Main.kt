@@ -12,13 +12,9 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyListener
 import com.github.kwhat.jnativehook.mouse.NativeMouseEvent
 import com.github.kwhat.jnativehook.mouse.NativeMouseListener
 import com.github.kwhat.jnativehook.mouse.NativeMouseMotionListener
-import com.sun.javafx.scene.control.skin.FXVK.attach
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
-import java.awt.MouseInfo.getPointerInfo
-import java.awt.PointerInfo
 import java.awt.Robot
-import java.awt.event.KeyEvent
 import java.awt.event.KeyEvent.*
 import java.awt.event.MouseEvent
 import java.net.StandardSocketOptions.SO_KEEPALIVE
@@ -78,11 +74,11 @@ fun main(args: Array<String>) {
                     VC_D -> OP_D; VC_F -> OP_F
                     VC_5 -> OP_CONTROL; else -> return
                 }; runBlocking {
-                    write.byte(OP_MOUSE)
-                    val point = getPointerInfo().location
-                    println(point)
-                    write.int(point.x)
-                    write.int(point.y)
+//                    write.byte(OP_MOUSE)
+//                    val point = getPointerInfo().location
+//                    println(point)
+//                    write.int(point.x)
+//                    write.int(point.y)
                     write.byte(operation)
                 }
             }
