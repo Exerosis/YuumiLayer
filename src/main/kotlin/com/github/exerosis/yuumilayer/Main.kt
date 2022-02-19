@@ -94,14 +94,7 @@ fun main(args: Array<String>) {
                 when (read.byte()) {
                     OP_KEY_PRESS -> robot.keyPress(read.int())
                     OP_KEY_RELEASE -> robot.keyRelease(read.int())
-                    OP_MOUSE_MOVE -> {
-                        val x = read.int(); val y = read.int()
-                        val origin = MouseInfo.getPointerInfo().location
-                        robot.mouseMove(
-                            (x - (x - origin.x) * scale).toInt(),
-                            (y - (y - origin.y) * scale).toInt()
-                        )
-                    }
+                    OP_MOUSE_MOVE -> robot.mouseMove(read.int(), read.int())
                     OP_MOUSE_PRESS -> robot.mousePress(read.byte().toInt())
                     OP_MOUSE_RELEASE -> robot.mouseRelease(read.byte().toInt())
                 }
