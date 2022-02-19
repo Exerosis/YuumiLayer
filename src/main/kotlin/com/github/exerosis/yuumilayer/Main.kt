@@ -7,7 +7,6 @@ import com.github.exerosis.mynt.component2
 import com.github.kwhat.jnativehook.GlobalScreen
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent.*
-
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener
 import com.github.kwhat.jnativehook.mouse.NativeMouseEvent
 import com.github.kwhat.jnativehook.mouse.NativeMouseListener
@@ -16,13 +15,10 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import java.awt.Robot
 import java.awt.event.KeyEvent.*
-import java.awt.event.MouseEvent
 import java.net.StandardSocketOptions.SO_KEEPALIVE
 import java.net.StandardSocketOptions.TCP_NODELAY
 import java.nio.channels.AsynchronousChannelGroup.withThreadPool
 import java.util.concurrent.Executors
-import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent.CTRL_MASK as MASK_CTRL
-import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent.SHIFT_MASK as MAKS_SHIFT
 
 const val OP_MOUSE_MOVE = 2.toByte()
 const val OP_MOUSE_PRESS = 3.toByte()
@@ -60,10 +56,14 @@ fun main(args: Array<String>) {
         val (_, write) = runBlocking(dispatcher) { provider.connect(address) }
         println("Got connection to Yuumi!")
         val listener = object : NativeKeyListener, NativeMouseListener, NativeMouseMotionListener {
+            var shift = false; var ctrl = false
             override fun nativeKeyPressed(event: NativeKeyEvent) {
-                if (event.modifiers and MAKS_SHIFT != 0) return
-                val ctrl = event.modifiers and MASK_CTRL != 0
-                println("Shift: true Ctrl: $ctrl")
+                if (event.keyCode == 42) {
+                    shift = true
+                }
+                else if (event.keyCode == 29) ctrl = true
+                else if (!shift) return
+                println("Control: $ctrl")
                 val operation = when (event.keyCode) {
                     VC_Q -> if (ctrl) OP_LEVEL_MISSILE else OP_MISSILE
                     VC_W -> if (ctrl) OP_LEVEL_ATTACH else OP_ATTACH
@@ -73,36 +73,15 @@ fun main(args: Array<String>) {
                     VC_1 -> OP_ACTIVE; VC_2 -> OP_CENTER
                     VC_D -> OP_D; VC_F -> OP_F
                     VC_5 -> OP_CONTROL; else -> return
-                }; runBlocking {
-//                    write.byte(OP_MOUSE)
-//                    val point = getPointerInfo().location
-//                    println(point)
-//                    write.int(point.x)
-//                    write.int(point.y)
-                    write.byte(operation)
-                }
+                }; runBlocking { write.byte(operation) }
+            }
+            override fun nativeKeyReleased(event: NativeKeyEvent) {
+                if (event.keyCode == 42) shift = false
+                else if (event.keyCode == 29) ctrl = false
             }
             override fun nativeMouseMoved(event: NativeMouseEvent) = runBlocking {
                 write.byte(OP_MOUSE); write.int(event.x); write.int(event.y)
             }
-
-            fun handle(operation: Byte, event: NativeMouseEvent) {
-                if (event.modifiers and SHIFT_MASK == 0) return
-                val button = when (event.button) {
-                    NativeMouseEvent.BUTTON1 -> MouseEvent.BUTTON1_MASK
-                    NativeMouseEvent.BUTTON2 -> MouseEvent.BUTTON2_MASK
-                    NativeMouseEvent.BUTTON3 -> MouseEvent.BUTTON3_MASK
-                    else -> return
-                }; runBlocking {
-                    write.byte(OP_MOUSE_MOVE)
-                    write.int(event.x)
-                    write.int(event.y)
-                    write.byte(operation)
-                    write.byte(button.toByte())
-                }
-            }
-            override fun nativeMousePressed(event: NativeMouseEvent) = handle(OP_MOUSE_PRESS, event)
-            override fun nativeMouseReleased(event: NativeMouseEvent) = handle(OP_MOUSE_RELEASE, event)
         }
         GlobalScreen.registerNativeHook()
         GlobalScreen.addNativeKeyListener(listener)
@@ -111,12 +90,17 @@ fun main(args: Array<String>) {
     } else while (provider.isOpen) runBlocking {
         try {
             val robot = Robot(); val scale = 1 / args[3].toDouble()
+            var pressing = false
             fun press(key: Int, block: () -> (Unit) = {}) {
+                pressing = true
                 robot.keyPress(key); block(); robot.keyRelease(key)
+                pressing = false
             }
-            fun move(x: Int, y: Int) = robot.mouseMove(
-                (x * scale).toInt(), (y * scale).toInt()
-            )
+            fun move(x: Int, y: Int) {
+                if (!pressing) robot.mouseMove(
+                    (x * scale).toInt(), (y * scale).toInt()
+                )
+            }
             println("Waiting for connections...")
             provider.accept(address).apply {
                 println("Got connection to Yuumi!")
